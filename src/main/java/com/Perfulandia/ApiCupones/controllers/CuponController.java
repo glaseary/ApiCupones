@@ -1,69 +1,66 @@
 package com.Perfulandia.ApiCupones.controllers;
 
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.Perfulandia.ApiCupones.dto.CuponDTO;
 import com.Perfulandia.ApiCupones.services.CuponService;
 
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
+import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/cupones")
 public class CuponController {
 
-@Autowired
-private CuponService cuponService;
+    private final CuponService cuponService;
 
-@GetMapping
-public ResponseEntity<List<CuponDTO>> listar() {
-return ResponseEntity.ok(cuponService.listarCupones());
-}
+    @Autowired
+    public CuponController(CuponService cuponService) {
+        this.cuponService = cuponService;
+    }
 
-@GetMapping("/{id}")
-public ResponseEntity<CuponDTO> obtenerPorId(@PathVariable Integer id) {
-try {
-return ResponseEntity.ok(cuponService.obtenerCuponPorId(id));
-} catch (EntityNotFoundException e) {
-return ResponseEntity.notFound().build();
-}
-}
+    @GetMapping
+    public ResponseEntity<List<CuponDTO>> listarTodos() {
+        return ResponseEntity.ok(cuponService.listarCupones());
+    }
 
-@PostMapping
-public ResponseEntity<CuponDTO> crear(@RequestBody CuponDTO dto) {
-CuponDTO cuponCreado = cuponService.crearCupon(dto);
-return ResponseEntity.status(HttpStatus.CREATED).body(cuponCreado);
-}
+    @GetMapping("/{id}")
+    public ResponseEntity<CuponDTO> obtenerPorId(@PathVariable Integer id) {
+        return ResponseEntity.ok(cuponService.obtenerCuponPorId(id));
+    }
 
-@PutMapping("/{id}")
-public ResponseEntity<CuponDTO> actualizar(@PathVariable Integer id, @RequestBody CuponDTO dto) {
-try {
-return ResponseEntity.ok(cuponService.actualizarCupon(id, dto));
-} catch (EntityNotFoundException e) {
-return ResponseEntity.notFound().build();
-}
-}
+    @PostMapping
+    public ResponseEntity<CuponDTO> crear(@Valid @RequestBody CuponDTO dto) {
+        CuponDTO cuponCreado = cuponService.crearCupon(dto);
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(cuponCreado.getIdCupon())
+                .toUri();
+        return ResponseEntity.created(location).body(cuponCreado);
+    }
 
-@DeleteMapping("/{id}")
-public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
-try {
-cuponService.eliminarCupon(id);
-return ResponseEntity.noContent().build();
-} catch (EntityNotFoundException e) {
-return ResponseEntity.notFound().build();
-}
-}
+    @PutMapping("/{id}")
+    public ResponseEntity<CuponDTO> actualizar(
+            @PathVariable Integer id,
+            @Valid @RequestBody CuponDTO dto) {
+        return ResponseEntity.ok(cuponService.actualizarCupon(id, dto));
+    }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
+        cuponService.eliminarCupon(id);
+        return ResponseEntity.noContent().build();
+    }
 
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<String> handleEntityNotFound(EntityNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
 }
